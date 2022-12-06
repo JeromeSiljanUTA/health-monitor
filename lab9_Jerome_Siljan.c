@@ -428,7 +428,6 @@ uint32_t get_breath() {
     CLK = 0;
     _delay_cycles(10);
 
-    waitMicrosecond(500000);
     snprintf(str, sizeof(str), "%d\n", value);
     putsUart0(str);
 
@@ -436,7 +435,8 @@ uint32_t get_breath() {
     prev_breath = value;
     set_up_down();
 
-    GPIO_PORTE_ICR_R = TIMER_ICR_TATOCINT;
+    // GPIO_PORTE_ICR_R = TIMER_ICR_TATOCINT;
+    GPIO_PORTE_ICR_R = DATA_MASK;
     return value;
 }
 
