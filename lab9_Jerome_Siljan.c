@@ -414,17 +414,12 @@ int main(void) {
     // initialize data struct
     USER_DATA data;
 
+    char newstr[40];
+
     while (true) {
-        putsUart0("> ");
-        getsUart0(&data);
-        parseFields(&data);
-        uint8_t field1 = getFieldInteger(&data, 1);
-        uint8_t field2 = getFieldInteger(&data, 2);
-        char *res_string = getFieldString(&data, 0);
-        snprintf(buf_string, sizeof(buf_string), "%s\n", res_string);
-        putsUart0(buf_string);
-        snprintf(buf_string, sizeof(buf_string), "%d %d\n", field1, field2);
-        putsUart0(buf_string);
+        snprintf(newstr, sizeof(newstr), "%d\n", get_breath());
+        putsUart0(newstr);
+        waitMicrosecond(500000);
     }
 
     /* show_bpm loop
