@@ -247,15 +247,6 @@ void initHw() {
                          SYSCTL_RCGCGPIO_R4 | SYSCTL_RCGCGPIO_R5;
     _delay_cycles(3);
 
-    // Timer 4 periodic setup
-    TIMER4_CTL_R &= ~TIMER_CTL_TAEN;         // disable timer
-    TIMER4_CFG_R = TIMER_CFG_32_BIT_TIMER;   // set CFG to 0
-    TIMER4_TAMR_R = TIMER_TAMR_TAMR_PERIOD;  // set to periodic mode
-    TIMER4_TAILR_R = 40000000;               // 1 Hz freq
-    TIMER4_IMR_R = TIMER_IMR_TATOIM;         // enable interrupt
-    NVIC_EN2_R |= 1 << (86 - 16 - 32 * 2);   // turn on interrupt 32 (TIMER1A)
-    TIMER4_CTL_R |= TIMER_CTL_TAEN;          // enable timer
-
     // Configure LED pins
     GPIO_PORTC_DIR_R |= RED_LED_MASK;
     GPIO_PORTC_DEN_R |= RED_LED_MASK;
@@ -282,6 +273,13 @@ void initHw() {
     // set clk pin output
     GPIO_PORTD_DIR_R |= CLK_MASK;
     GPIO_PORTD_DEN_R |= CLK_MASK;
+
+    // Timer 4 periodic setup
+    TIMER4_CTL_R &= ~TIMER_CTL_TAEN;         // disable timer
+    TIMER4_CFG_R = TIMER_CFG_32_BIT_TIMER;   // set CFG to 0
+    TIMER4_TAMR_R = TIMER_TAMR_TAMR_PERIOD;  // set to periodic mode
+    TIMER4_TAILR_R = 40000000;               // 1 Hz freq
+    TIMER4_IMR_R = TIMER_IMR_TATOIM;         // enable interrupt
 }
 
 void insert_bpm_array(float a) {
@@ -405,6 +403,10 @@ int main(void) {
 
     // set timer
     enableTimerMode();
+
+    // enable pulse timer
+    NVIC_EN2_R |= 1 << (86 - 16 - 32 * 2);  // turn on interrupt 32 (TIMER1A)
+    TIMER4_CTL_R |= TIMER_CTL_TAEN;         // enable timer
 
     // set baud rate
     setUart0BaudRate(115200, 40e6);
