@@ -62,10 +62,16 @@ uint32_t finger_missing_count = 0;
 
 float bpm_array[BPM_NUM];
 uint32_t bpm_index = 0;
-uint8_t bpm_upper = 150;
-uint8_t bpm_lower = 40;
+uint32_t bpm_upper = 150;
+uint32_t bpm_lower = 40;
 
 char str[MAX_CHARS + 1];
+
+uint32_t prev_breath;
+uint32_t up = 0;
+uint32_t down = 0;
+int32_t diff = 0;
+uint32_t breath_time = 0;
 
 typedef struct _USER_DATA {
     char buffer[MAX_CHARS + 1];
@@ -381,6 +387,24 @@ void set_min_max() {
     bpm_lower = getFieldInteger(&data, 2);
 }
 
+void set_up_down() {
+    if (diff > 0) {
+        putsUart0("inc\n");
+        if (up >= 3) {
+            if (down >= 3) {
+                up = 0;
+                down = 0;
+                putsUart0("breath cycle\n");
+            }
+        } else {
+            up++;
+        }
+    } else if (diff < 0) {
+        putsUart0("dec\n");
+        down++;
+    }
+}
+
 uint32_t get_breath() {
     char str[40];
     uint32_t value = 0;
@@ -407,6 +431,10 @@ uint32_t get_breath() {
     waitMicrosecond(500000);
     snprintf(str, sizeof(str), "%d\n", value);
     putsUart0(str);
+
+    diff = value - prev_breath;
+    prev_breath = value;
+    set_up_down();
 
     GPIO_PORTE_ICR_R = TIMER_ICR_TATOCINT;
     return value;
@@ -440,6 +468,8 @@ int main(void) {
     setUart0BaudRate(115200, 40e6);
 
     char buf_string[MAX_CHARS + 1];
+
+    // enableBreathTimer();
 
     char newstr[40];
 
