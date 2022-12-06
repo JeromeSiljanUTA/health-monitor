@@ -71,7 +71,10 @@ uint32_t prev_breath;
 uint32_t up = 0;
 uint32_t down = 0;
 int32_t diff = 0;
-uint32_t breath_time = 0;
+float breath_time = 0;
+float num_samples;
+uint32_t breath_upper = 5;
+uint32_t breath_lower = 20;
 
 typedef struct _USER_DATA {
     char buffer[MAX_CHARS + 1];
@@ -387,25 +390,39 @@ void set_min_max() {
     bpm_lower = getFieldInteger(&data, 2);
 }
 
+void set_breath_min_max() {
+    breath_upper = getFieldInteger(&data, 3);
+    breath_lower = getFieldInteger(&data, 2);
+}
+
 void set_up_down() {
     if (diff > 0) {
-        putsUart0("inc\n");
+        // putsUart0("inc\n");
         if (up >= 3) {
             if (down >= 3) {
                 up = 0;
                 down = 0;
-                putsUart0("breath cycle\n");
+                char local_str[40];
+                // 10 samples a second, 60 seconds in a minute
+                breath_time = 60 / (num_samples / 10);
+                snprintf(local_str, sizeof(local_str),
+                         "took %f samples, %f bpm\n", num_samples, breath_time);
+                //"breathing at %d breaths per minute\n", num_samples);
+                // putsUart0("breath cycle\n");
+                putsUart0(local_str);
+                num_samples = 0;
             }
         } else {
             up++;
         }
     } else if (diff < 0) {
-        putsUart0("dec\n");
+        // putsUart0("dec\n");
         down++;
     }
 }
 
 uint32_t get_breath() {
+    num_samples++;
     char str[40];
     uint32_t value = 0;
     while (!DATA)
@@ -429,7 +446,7 @@ uint32_t get_breath() {
     _delay_cycles(10);
 
     snprintf(str, sizeof(str), "%d\n", value);
-    putsUart0(str);
+    // putsUart0(str);
 
     diff = value - prev_breath;
     prev_breath = value;
@@ -479,6 +496,10 @@ int main(void) {
         parseFields(&data);
         if (isCommand(&data, "pulse", 0)) {
             show_pulse();
+        } else if (isCommand(&data, "respiration", 0)) {
+            snprintf(newstr, sizeof(newstr),
+                     "Breathing at %f breaths per minute\n", breath_time);
+            putsUart0(newstr);
         } else if (isCommand(&data, "alarm", 3)) {
             show_pulse();
         } else {
@@ -489,24 +510,5 @@ int main(void) {
                      data.fieldCount);
             putsUart0(newstr);
         }
-        // snprintf(newstr, sizeof(newstr), "%d\n", get_breath());
-        // putsUart0(newstr);
-        // waitMicrosecond(500000);
     }
-
-    /* show_bpm loop
-    while (true) {
-        if (pulse_active == true) {
-            show_bpm();
-            uint32_t i = 0;
-            for (i = 0; i < BPM_NUM; i++) {
-                putsUart0("array\n");
-                snprintf(str, sizeof(str), "%f\n", bpm_array[i]);
-                putsUart0(str);
-            }
-        } else {
-            GPIO_PORTC_DATA_R &= ~RED_LED_MASK;
-        }
-    }
-    */
 }
