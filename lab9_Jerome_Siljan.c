@@ -38,6 +38,18 @@
 #define MAX_CHARS 80
 #define MAX_FIELDS 5
 
+// SPI
+#define DATA_MASK 4
+#define CLK_MASK 64
+
+#define CLK                                                                \
+    (*((volatile uint32_t *)(0x42000000 + (0x400073FC - 0x40000000) * 32 + \
+                             6 * 4)))
+
+#define DATA                                                               \
+    (*((volatile uint32_t *)(0x42000000 + (0x400243FC - 0x40000000) * 32 + \
+                             2 * 4)))
+
 // Global variables
 bool pulse_active = false;
 bool timeMode = false;
@@ -228,10 +240,11 @@ void initHw() {
     initSystemClockTo40Mhz();
 
     // Enable clocks
-    SYSCTL_RCGCTIMER_R |= SYSCTL_RCGCTIMER_R1 | SYSCTL_RCGCTIMER_R4;
+    SYSCTL_RCGCTIMER_R |=
+        SYSCTL_RCGCTIMER_R1 | SYSCTL_RCGCTIMER_R3 | SYSCTL_RCGCTIMER_R4;
     SYSCTL_RCGCWTIMER_R |= SYSCTL_RCGCWTIMER_R1;
-    SYSCTL_RCGCGPIO_R |=
-        SYSCTL_RCGCGPIO_R2 | SYSCTL_RCGCGPIO_R4 | SYSCTL_RCGCGPIO_R5;
+    SYSCTL_RCGCGPIO_R |= SYSCTL_RCGCGPIO_R2 | SYSCTL_RCGCGPIO_R3 |
+                         SYSCTL_RCGCGPIO_R4 | SYSCTL_RCGCGPIO_R5;
     _delay_cycles(3);
 
     // Timer 4 periodic setup
@@ -260,6 +273,15 @@ void initHw() {
         AIN3_MASK;  // select alternative functions for AN3 (PE0)
     GPIO_PORTE_DEN_R &= ~AIN3_MASK;   // turn off digital operation on pin PE0
     GPIO_PORTE_AMSEL_R |= AIN3_MASK;  // turn on analog operation on pin PE0
+
+    // set data pin input
+    GPIO_PORTE_DIR_R &= ~DATA_MASK;
+    GPIO_PORTE_DEN_R |= DATA_MASK;
+    GPIO_PORTE_PDR_R |= DATA_MASK;
+
+    // set clk pin output
+    GPIO_PORTD_DIR_R |= CLK_MASK;
+    GPIO_PORTD_DEN_R |= CLK_MASK;
 }
 
 void insert_bpm_array(float a) {
@@ -336,6 +358,35 @@ void show_pulse() {
     } else {
         putsUart0("(not detected)\n");
     }
+}
+
+uint32_t get_breath() {
+    char str[40];
+    uint32_t value = 0;
+    while (!DATA)
+        ;
+    value = 0;
+    uint32_t i;
+    for (i = 0; i < 24; i++) {
+        CLK = 1;
+        waitMicrosecond(3);
+        uint32_t reading = DATA;
+        snprintf(str, sizeof(str), "%d\n", reading);
+        // putsUart0(str);
+        value |= reading;
+        value = value << 1;
+        CLK = 0;
+        _delay_cycles(10);
+    }
+    CLK = 1;
+    waitMicrosecond(10);
+    CLK = 0;
+    _delay_cycles(10);
+
+    snprintf(str, sizeof(str), "%d\n", value);
+    // putsUart0(str);
+
+    return value;
 }
 
 //-----------------------------------------------------------------------------
