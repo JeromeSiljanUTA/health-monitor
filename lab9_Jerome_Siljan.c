@@ -404,10 +404,11 @@ uint32_t get_breath() {
     CLK = 0;
     _delay_cycles(10);
 
-    waitMicrosecond(100);
+    waitMicrosecond(500000);
     snprintf(str, sizeof(str), "%d\n", value);
     putsUart0(str);
 
+    GPIO_PORTE_ICR_R = TIMER_ICR_TATOCINT;
     return value;
 }
 
