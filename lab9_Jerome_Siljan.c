@@ -310,15 +310,15 @@ void pulse_check() {
 }
 
 void show_bpm() {
-    GPIO_PORTC_DATA_R = RED_LED_MASK;
     float bpm = calc_bpm(time);
     insert_bpm_array(bpm);
     char str[40];
     snprintf(str, sizeof(str), "Average BPM: %f\n", get_avg());
     putsUart0(str);
+    /*
+    GPIO_PORTC_DATA_R = RED_LED_MASK;
     snprintf(str, sizeof(str), "BPM:\t%f\n", bpm);
     putsUart0(str);
-    /*
     uint16_t raw;
     raw = readAdc0Ss3();
     snprintf(str, sizeof(str), "Raw ADC:          %4" PRIu16 "\n", raw);
@@ -329,7 +329,14 @@ void show_bpm() {
     waitMicrosecond(500000);
 }
 
-void show_pulse() {}
+void show_pulse() {
+    float avg = get_avg();
+    if (avg > bpm_lower && avg < bpm_upper) {
+        show_bpm();
+    } else {
+        putsUart0("(not detected)\n");
+    }
+}
 
 //-----------------------------------------------------------------------------
 // Main
