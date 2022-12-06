@@ -30,6 +30,9 @@
 // PortE masks
 #define AIN3_MASK 1
 
+// PortF masks
+#define BUILTIN_MASK 2
+
 // bpm averaging consts
 #define BPM_NUM 5
 #define NUM_DIST 10
@@ -70,6 +73,9 @@ typedef struct _USER_DATA {
     uint8_t fieldPosition[MAX_FIELDS];
     char fieldType[MAX_FIELDS];
 } USER_DATA;
+
+// initialize data struct
+USER_DATA data;
 
 // function headers
 char *getFieldString(USER_DATA *data, uint8_t fieldNumber);
@@ -240,12 +246,16 @@ void initHw() {
     initSystemClockTo40Mhz();
 
     // Enable clocks
-    SYSCTL_RCGCTIMER_R |=
-        SYSCTL_RCGCTIMER_R1 | SYSCTL_RCGCTIMER_R3 | SYSCTL_RCGCTIMER_R4;
+    SYSCTL_RCGCTIMER_R |= SYSCTL_RCGCTIMER_R1 | SYSCTL_RCGCTIMER_R3 |
+                          SYSCTL_RCGCTIMER_R4 | SYSCTL_RCGCWTIMER_R5;
     SYSCTL_RCGCWTIMER_R |= SYSCTL_RCGCWTIMER_R1;
     SYSCTL_RCGCGPIO_R |= SYSCTL_RCGCGPIO_R2 | SYSCTL_RCGCGPIO_R3 |
                          SYSCTL_RCGCGPIO_R4 | SYSCTL_RCGCGPIO_R5;
     _delay_cycles(3);
+
+    // Configure builtin LED pins
+    GPIO_PORTF_DIR_R |= BUILTIN_MASK;
+    GPIO_PORTF_DEN_R |= BUILTIN_MASK;
 
     // Configure LED pins
     GPIO_PORTC_DIR_R |= RED_LED_MASK;
@@ -314,7 +324,7 @@ void pulse_check() {
     uint32_t light_off = readAdc0Ss3();
 
     int difference = light_off - light_on;
-    if (light_on > 1500 && difference > 80) {
+    if (light_on > 1500 && difference > 60) {
         pulse_active = true;
         GPIO_PORTC_DATA_R |= RED_LED_MASK;
     } else {
@@ -351,11 +361,18 @@ void show_bpm() {
 
 void show_pulse() {
     float avg = get_avg();
-    if (avg > bpm_lower && avg < bpm_upper) {
+    if ((pulse_active) && (avg > bpm_lower && avg < bpm_upper)) {
+        RED_LED = 0;
         show_bpm();
     } else {
+        RED_LED = 1;
         putsUart0("(not detected)\n");
     }
+}
+
+void set_min_max() {
+    bpm_upper = getFieldInteger(&data, 3);
+    bpm_lower = getFieldInteger(&data, 2);
 }
 
 uint32_t get_breath() {
@@ -413,15 +430,27 @@ int main(void) {
 
     char buf_string[MAX_CHARS + 1];
 
-    // initialize data struct
-    USER_DATA data;
-
     char newstr[40];
 
     while (true) {
-        snprintf(newstr, sizeof(newstr), "%d\n", get_breath());
-        putsUart0(newstr);
-        waitMicrosecond(500000);
+        putsUart0("> ");
+        getsUart0(&data);
+        parseFields(&data);
+        if (isCommand(&data, "pulse", 0)) {
+            show_pulse();
+        } else if (isCommand(&data, "alarm", 3)) {
+            show_pulse();
+        } else {
+            snprintf(newstr, sizeof(newstr), "'%s'\n",
+                     getFieldString(&data, 0));
+            putsUart0(newstr);
+            snprintf(newstr, sizeof(newstr), "field count: %d\n",
+                     data.fieldCount);
+            putsUart0(newstr);
+        }
+        // snprintf(newstr, sizeof(newstr), "%d\n", get_breath());
+        // putsUart0(newstr);
+        // waitMicrosecond(500000);
     }
 
     /* show_bpm loop
