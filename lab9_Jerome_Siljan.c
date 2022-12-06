@@ -34,6 +34,10 @@
 #define BPM_NUM 5
 #define NUM_DIST 10
 
+// shell vars
+#define MAX_CHARS 80
+#define MAX_FIELDS 5
+
 // Global variables
 bool pulse_active = false;
 bool timeMode = false;
@@ -44,7 +48,143 @@ uint32_t finger_missing_count = 0;
 float bpm_array[BPM_NUM];
 uint32_t bpm_index = 0;
 
+char str[MAX_CHARS + 1];
+
+typedef struct _USER_DATA {
+    char buffer[MAX_CHARS + 1];
+    uint8_t fieldCount;
+    uint8_t fieldPosition[MAX_FIELDS];
+    char fieldType[MAX_FIELDS];
+} USER_DATA;
+
+// function headers
+char *getFieldString(USER_DATA *data, uint8_t fieldNumber);
+int32_t getFieldInteger(USER_DATA *data, uint8_t fieldNumber);
+void parseFields(USER_DATA *data);
+int str_to_int(char *str);
+bool str_comp(char *data_command, const char strCommand[]);
+bool isCommand(USER_DATA *data, const char strCommand[], uint8_t minArguments);
+uint16_t getsUart0(USER_DATA *data);
+
 // Subroutines
+uint16_t getsUart0(USER_DATA *data) {
+    uint16_t count = 0;
+    char c;
+    while (count != MAX_CHARS) {
+        c = getcUart0();
+        if (count > 0 && (c == 8 | c == 127)) {
+            count--;
+        } else if (c == 13) {
+            data->buffer[count] = '\0';
+            return 0;
+        } else if (c >= 32) {
+            data->buffer[count] = c;
+            count++;
+        }
+    }
+    data->buffer[count] = '\0';
+    return 0;
+}
+
+int str_to_int(char *str) {
+    int32_t to_int = 0;
+    uint8_t i = 0;
+    while (str[i] != '\0') {
+        to_int = to_int * 10;
+        to_int += str[i] - 48;
+        i++;
+    }
+    return to_int;
+}
+
+void parseFields(USER_DATA *data) {
+    data->fieldCount = 0;
+    uint8_t i = 0;
+    bool first = true;
+
+    while (i <= MAX_CHARS + 1) {
+        if (data->buffer[i] > 47 && data->buffer[i] < 58) {  // 0-9
+            if (first == true) {
+                data->fieldType[data->fieldCount] = 'n';
+                first = false;
+            }
+        } else if ((data->buffer[i] > 65 && data->buffer[i] < 90) |   // A-Z
+                   (data->buffer[i] > 96 && data->buffer[i] < 123) |  // a-z
+                   ((data->buffer[i] == '-') |                        // '-'
+                    (data->buffer[i] == '.'))) {                      // '.'
+            if (first == true) {
+                data->fieldType[data->fieldCount] = 'a';
+                first = false;
+            }
+        } else if ((data->buffer[i] == '\n') | (data->buffer[i] == '\0')) {
+            data->buffer[i] = '\0';
+            break;
+        } else {
+            first = true;
+            data->buffer[i] = '\0';
+            data->fieldPosition[data->fieldCount] = i;
+            data->fieldCount++;
+        }
+        i++;
+    }
+}
+
+int32_t getFieldInteger(USER_DATA *data, uint8_t fieldNumber) {
+    char *str = getFieldString(data, fieldNumber);
+
+    if (str == NULL) {
+        return 0;
+    } else {
+        return str_to_int(str);
+    }
+}
+
+char *getFieldString(USER_DATA *data, uint8_t fieldNumber) {
+    uint8_t i;
+    for (i = 0; i < MAX_CHARS + 1; i++) {
+        str[i] = 0;
+    }
+
+    if (data->fieldType[fieldNumber] == '\0') {
+        return NULL;
+    }
+
+    uint8_t field_index = 0;
+    if (fieldNumber != 0) {
+        field_index = data->fieldPosition[fieldNumber - 1];
+        field_index++;
+    }
+    i = 0;
+    while (data->buffer[field_index] != '\0') {
+        str[i] = data->buffer[field_index];
+        field_index++;
+        i++;
+    }
+
+    return str;
+}
+
+bool str_comp(char *data_command, const char strCommand[]) {
+    uint8_t i = 0;
+    while (data_command[i] != '\0') {
+        if (data_command[i] != strCommand[i]) {
+            return false;
+        }
+        i++;
+    }
+    return true;
+}
+
+bool isCommand(USER_DATA *data, const char strCommand[], uint8_t minArguments) {
+    if (str_comp(getFieldString(data, 0), strCommand)) {
+        if (data->fieldCount >= minArguments) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+    return false;
+}
 float calc_bpm(uint32_t time) {
     float micro = time / 40;
     float sec = micro / 1000000;
