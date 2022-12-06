@@ -290,6 +290,12 @@ void initHw() {
     TIMER4_TAMR_R = TIMER_TAMR_TAMR_PERIOD;  // set to periodic mode
     TIMER4_TAILR_R = 40000000;               // 1 Hz freq
     TIMER4_IMR_R = TIMER_IMR_TATOIM;         // enable interrupt
+
+    GPIO_PORTE_IM_R &= ~DATA_MASK;
+    GPIO_PORTE_IS_R &= ~DATA_MASK;
+    GPIO_PORTE_IBE_R &= ~DATA_MASK;
+    GPIO_PORTE_IEV_R |= DATA_MASK;
+    GPIO_PORTE_IM_R |= DATA_MASK;
 }
 
 void insert_bpm_array(float a) {
@@ -398,8 +404,9 @@ uint32_t get_breath() {
     CLK = 0;
     _delay_cycles(10);
 
+    waitMicrosecond(100);
     snprintf(str, sizeof(str), "%d\n", value);
-    // putsUart0(str);
+    putsUart0(str);
 
     return value;
 }
@@ -424,6 +431,9 @@ int main(void) {
     // enable pulse timer
     NVIC_EN2_R |= 1 << (86 - 16 - 32 * 2);  // turn on interrupt 32 (TIMER1A)
     TIMER4_CTL_R |= TIMER_CTL_TAEN;         // enable timer
+
+    // strain guage interrupt
+    NVIC_EN0_R |= 1 << 4;  // turn on interrupt 32 (TIMER1A)
 
     // set baud rate
     setUart0BaudRate(115200, 40e6);
