@@ -47,6 +47,8 @@ uint32_t finger_missing_count = 0;
 
 float bpm_array[BPM_NUM];
 uint32_t bpm_index = 0;
+uint8_t bpm_upper = 150;
+uint8_t bpm_lower = 40;
 
 char str[MAX_CHARS + 1];
 
@@ -261,7 +263,7 @@ void initHw() {
 }
 
 void insert_bpm_array(float a) {
-    if ((a < 150 && a > 40) && a != bpm_array[bpm_index - 1]) {
+    if ((a < bpm_upper && a > bpm_lower) && a != bpm_array[bpm_index - 1]) {
         bpm_array[bpm_index] = a;
         if (bpm_index < BPM_NUM - 1) {
             bpm_index++;
@@ -327,6 +329,8 @@ void show_bpm() {
     waitMicrosecond(500000);
 }
 
+void show_pulse() {}
+
 //-----------------------------------------------------------------------------
 // Main
 //-----------------------------------------------------------------------------
@@ -347,7 +351,7 @@ int main(void) {
     // set baud rate
     setUart0BaudRate(115200, 40e6);
 
-    char str[MAX_CHARS + 1];
+    char buf_string[MAX_CHARS + 1];
 
     // initialize data struct
     USER_DATA data;
