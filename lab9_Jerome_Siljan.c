@@ -185,6 +185,7 @@ bool isCommand(USER_DATA *data, const char strCommand[], uint8_t minArguments) {
     }
     return false;
 }
+
 float calc_bpm(uint32_t time) {
     float micro = time / 40;
     float sec = micro / 1000000;
@@ -340,11 +341,29 @@ int main(void) {
     setAdc0Ss3Mux(3);
     setAdc0Ss3Log2AverageCount(2);
 
+    // set timer
     enableTimerMode();
 
+    // set baud rate
     setUart0BaudRate(115200, 40e6);
 
-    char str[40];
+    char str[MAX_CHARS + 1];
+
+    // initialize data struct
+    USER_DATA data;
+
+    while (true) {
+        putsUart0("> ");
+        getsUart0(&data);
+        parseFields(&data);
+        uint8_t field1 = getFieldInteger(&data, 1);
+        uint8_t field2 = getFieldInteger(&data, 2);
+        char *res_string = getFieldString(&data, 0);
+        snprintf(buf_string, sizeof(buf_string), "%s\n", res_string);
+        putsUart0(buf_string);
+        snprintf(buf_string, sizeof(buf_string), "%d %d\n", field1, field2);
+        putsUart0(buf_string);
+    }
 
     /* show_bpm loop
     while (true) {
