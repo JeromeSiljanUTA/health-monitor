@@ -23,6 +23,9 @@
 #define RED_LED                                                            \
     (*((volatile uint32_t *)(0x42000000 + (0x400253FC - 0x40000000) * 32 + \
                              1 * 4)))
+#define BLUE_LED                                                           \
+    (*((volatile uint32_t *)(0x42000000 + (0x400253FC - 0x40000000) * 32 + \
+                             2 * 4)))
 // PortC masks
 #define FREQ_IN_MASK 64
 #define RED_LED_MASK 128
@@ -32,6 +35,7 @@
 
 // PortF masks
 #define BUILTIN_MASK 2
+#define BLUE_LED_MASK 4
 
 // bpm averaging consts
 #define BPM_NUM 5
@@ -263,8 +267,8 @@ void initHw() {
     _delay_cycles(3);
 
     // Configure builtin LED pins
-    GPIO_PORTF_DIR_R |= BUILTIN_MASK;
-    GPIO_PORTF_DEN_R |= BUILTIN_MASK;
+    GPIO_PORTF_DIR_R |= BUILTIN_MASK | BLUE_LED_MASK;
+    GPIO_PORTF_DEN_R |= BUILTIN_MASK | BLUE_LED_MASK;
 
     // Configure LED pins
     GPIO_PORTC_DIR_R |= RED_LED_MASK;
@@ -409,7 +413,7 @@ void set_up_down() {
                          "took %f samples, %f bpm\n", num_samples, breath_time);
                 //"breathing at %d breaths per minute\n", num_samples);
                 // putsUart0("breath cycle\n");
-                putsUart0(local_str);
+                // putsUart0(local_str);
                 num_samples = 0;
             }
         } else {
@@ -453,6 +457,11 @@ uint32_t get_breath() {
     set_up_down();
 
     // GPIO_PORTE_ICR_R = TIMER_ICR_TATOCINT;
+    if (breath_time > breath_lower && breath_time < breath_upper) {
+        BLUE_LED = 0;
+    } else {
+        BLUE_LED = 1;
+    }
     GPIO_PORTE_ICR_R = DATA_MASK;
     return value;
 }
@@ -501,7 +510,11 @@ int main(void) {
                      "Breathing at %f breaths per minute\n", breath_time);
             putsUart0(newstr);
         } else if (isCommand(&data, "alarm", 3)) {
-            show_pulse();
+            if (str_comp(getFieldString(&data, 1), "pulse")) {
+                set_min_max();
+            } else {
+                set_breath_min_max();
+            }
         } else {
             snprintf(newstr, sizeof(newstr), "'%s'\n",
                      getFieldString(&data, 0));
