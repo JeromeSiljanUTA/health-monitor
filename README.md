@@ -1,4 +1,4 @@
-# Embedded Systems I: Final Project Report
+# Health Monitor
 
 This project reads a users's pulse and breathing rate and alerts them if either is out of an acceptable range. There is also an interface used to both display the readings and set appropriate pulse and breathing limits.
 
