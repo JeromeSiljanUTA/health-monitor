@@ -1,12 +1,4 @@
----
-title: "Embedded Systems I: Final Project Report"
-author: Jerome Siljan
-date: December 6, 2022
-geometry: margin=2.5cm
-output: pdf_document
----
-
-# Report
+# Embedded Systems I: Final Project Report
 
 This project reads a users's pulse and breathing rate and alerts them if either is out of an acceptable range. There is also an interface used to both display the readings and set appropriate pulse and breathing limits.
 
